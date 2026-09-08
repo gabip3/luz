@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<title>LUIZA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #000;
+    --ivory: #efe8da;
+    --ivory-warm: #f7f0e1;
+    --gold: 255, 226, 178;
+    --paper: #f6f2ea;
+    --ink: #1c1814;
+    --ink-soft: rgba(28, 24, 20, 0.8);
+    --gold-ink: rgb(172, 134, 70);
+    --stage-h: 100vh;
+    --stage-h: 100svh;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html {
+    background: var(--black);
+    color-scheme: dark;
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: auto;
+    overscroll-behavior-y: none;
+  }
+
+  body {
+    background: var(--black);
+    color: var(--ivory);
+    font-family: "Cormorant Garamond", "Cormorant", "Didot", "Bodoni MT", "Times New Roman", Georgia, serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow-x: hidden;
+  }
+
+  /* ---------- Abertura: pista de scroll ---------- */
+  .scene {
+    position: relative;
+    height: 420vh;
+    height: 420svh;
+  }
+
+  .stage {
+    position: sticky;
+    top: 0;
+    height: var(--stage-h);
+    width: 100%;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    background: var(--black);
+    perspective: 900px;
+    perspective-origin: 50% 50%;
+  }
+
+  /* grão: textura fina sobre o fundo, sempre atrás do texto */
+  .stage::before,
+  .estage::before,
+  .grain {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-image: radial-gradient(at 20% 80%, #fff 1px, transparent 0px);
+    background-size: 3px 3px;
+    opacity: 0.055;
+    mix-blend-mode: plus-lighter;
+    pointer-events: none;
+    user-select: none;
+  }
+  /* sobre o branco, o grão é escuro */
+  .estage::before,
+  .vstage.is-light .grain {
+    background-image: radial-gradient(at 20% 80%, #000 1px, transparent 0px);
+    mix-blend-mode: multiply;
+    opacity: 0.035;
+  }
+
+  /* bloom atrás da palavra */
+  .bloom {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 140vw;
+    height: 140vw;
+    max-width: 720px;
+    max-height: 720px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(
+      circle at center,
+      rgba(var(--gold), 0.15) 0%,
+      rgba(var(--gold), 0.09) 14%,
+      rgba(var(--gold), 0.05) 28%,
+      rgba(var(--gold), 0.022) 42%,
+      rgba(var(--gold), 0.008) 56%,
+      rgba(0,0,0,0) 70%
+    );
+    opacity: 0;
+    pointer-events: none;
+    will-change: opacity;
+  }
+
+  /* fachos verticais, muito discretos */
+  .ray {
+    position: absolute;
+    left: 50%;
+    width: 1px;
+    height: 22vh;
+    height: 22svh;
+    transform: translateX(-50%) scaleY(0);
+    opacity: 0;
+    pointer-events: none;
+    will-change: opacity, transform;
+  }
+  .ray--up {
+    bottom: 50%;
+    transform-origin: 50% 100%;
+    background: linear-gradient(to top, rgba(var(--gold), 0.55), rgba(var(--gold), 0));
+  }
+  .ray--down {
+    top: 50%;
+    transform-origin: 50% 0%;
+    background: linear-gradient(to bottom, rgba(var(--gold), 0.45), rgba(var(--gold), 0));
+  }
+
+  /* a palavra */
+  .word {
+    position: relative;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    font-weight: 300;
+    font-size: 24vw; /* ajustado por JS para nunca cortar */
+    line-height: 1;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--ivory);
+    opacity: 0;
+    transform-style: preserve-3d;
+    transition: opacity 2.4s cubic-bezier(.2,.6,.2,1);
+  }
+  .word.is-ready { opacity: 1; }
+
+  .letter {
+    display: inline-block;
+    position: relative;
+    transform-origin: 50% 60%;
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+  }
+  .letter--hidden { will-change: transform, opacity, filter; }
+  .letter:last-child { margin-right: -0.06em; } /* compensa tracking final */
+
+  /* respiração lenta em repouso */
+  @keyframes breathe {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.86; }
+  }
+  .word.is-ready.is-resting { animation: breathe 7s ease-in-out 2.4s infinite; }
+
+  /* pista de gesto: uma palavra e uma linha de um pixel */
+  .cue {
+    position: absolute;
+    left: 50%;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 6vh);
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    opacity: 0;
+    pointer-events: none;
+    will-change: opacity;
+    transition: opacity 1.8s ease 2.8s;
+  }
+  .cue-txt {
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.42em;
+    text-indent: 0.42em;
+    text-transform: uppercase;
+    color: rgba(239, 232, 218, 0.62);
+    white-space: nowrap;
+  }
+  .cue-line {
+    position: relative;
+    display: block;
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(to bottom, rgba(239,232,218,0) 0%, rgba(239,232,218,0.35) 100%);
+  }
+  .cue-line::after {
+    content: "";
+    position: absolute;
+    left: 0; top: 0;
+    width: 1px; height: 100%;
+    background: var(--ivory);
+    transform-origin: 50% 0;
+    animation: cueSlide 2.8s cubic-bezier(.4,0,.2,1) infinite;
+    opacity: 0.75;
+  }
+  @keyframes cueSlide {
+    0% { transform: scaleY(0); transform-origin: 50% 0; }
+    45% { transform: scaleY(1); transform-origin: 50% 0; }
+    46% { transform-origin: 50% 100%; }
+    100% { transform: scaleY(0); transform-origin: 50% 100%; }
+  }
+
+  /* ---------- Versículos: assume LUZ e compõe ao redor ---------- */
+  .verses {
+    position: relative;
+    z-index: 2;
+    height: 560vh;
+    height: 560svh;
+    margin-top: -100vh;
+    margin-top: -100svh;
+    pointer-events: none;
+  }
+
+  .vstage {
+    position: sticky;
+    top: 0;
+    height: var(--stage-h);
+    width: 100%;
+    overflow: hidden;
+    background: transparent;
+    visibility: hidden;
+  }
+  .vstage.is-live {
+    background: var(--black);
+    visibility: visible;
+  }
+  .vstage.is-light { background: var(--paper); }
+
+  /* amanhecer: a luz toma a tela */
+  .dawn {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 200vmax;
+    height: 200vmax;
+    margin: -100vmax 0 0 -100vmax;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle at center,
+      rgba(246, 242, 234, 1) 0%,
+      rgba(246, 242, 234, 1) 28%,
+      rgba(250, 240, 220, 0.85) 40%,
+      rgba(255, 236, 200, 0.5) 52%,
+      rgba(255, 230, 186, 0.18) 63%,
+      rgba(255, 226, 178, 0) 74%
+    );
+    transform: scale(0);
+    pointer-events: none;
+    will-change: transform, opacity;
+  }
+
+  .vbloom {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 140vw;
+    height: 140vw;
+    max-width: 720px;
+    max-height: 720px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(
+      circle at center,
+      rgba(var(--gold), 0.15) 0%,
+      rgba(var(--gold), 0.09) 14%,
+      rgba(var(--gold), 0.05) 28%,
+      rgba(var(--gold), 0.022) 42%,
+      rgba(var(--gold), 0.008) 56%,
+      rgba(0,0,0,0) 70%
+    );
+    opacity: 0.95;
+    pointer-events: none;
+    will-change: transform, opacity;
+  }
+
+  .vray {
+    position: absolute;
+    left: 50%;
+    width: 1px;
+    height: 22vh;
+    height: 22svh;
+    transform: translateX(-50%) scaleY(1);
+    pointer-events: none;
+    will-change: opacity;
+  }
+  .vray--up {
+    bottom: 50%;
+    transform-origin: 50% 100%;
+    background: linear-gradient(to top, rgba(var(--gold), 0.55), rgba(var(--gold), 0));
+    opacity: 0.42;
+  }
+  .vray--down {
+    top: 50%;
+    transform-origin: 50% 0%;
+    background: linear-gradient(to bottom, rgba(var(--gold), 0.45), rgba(var(--gold), 0));
+    opacity: 0.30;
+  }
+
+  /* as três letras herdadas */
+  .vl {
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transform-origin: 0 0;
+    will-change: transform;
+    backface-visibility: hidden;
+  }
+
+  /* composição editorial: o versículo, abaixo de LUZ */
+  .comp {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6vw;
+    text-align: center;
+    transform: translateY(-1.5vh);
+  }
+
+  .eyebrow {
+    position: relative;
+    width: 100%;
+    height: 1.3em;
+    margin-bottom: 2.2vw;
+    font-size: clamp(13px, 4vw, 18px);
+    font-weight: 600;
+    letter-spacing: 0.34em;
+    text-indent: 0.34em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .eb {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    opacity: 0;
+    will-change: opacity, transform;
+  }
+
+  .line {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  .slot {
+    display: inline-block;
+    visibility: hidden;
+    line-height: 1;
+    font-weight: 300;
+    letter-spacing: 0.28em;
+    margin-right: -0.22em;
+    text-transform: uppercase;
+  }
+
+  .mundo {
+    margin-top: 2.2vw;
+    height: 1.3em;
+    font-size: clamp(13px, 4vw, 18px);
+    font-weight: 600;
+    letter-spacing: 0.34em;
+    text-indent: 0.34em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    opacity: 0;
+    will-change: opacity, transform;
+  }
+
+  .ref {
+    position: relative;
+    width: 100%;
+    height: 1.6em;
+    margin-top: 6vw;
+    font-size: clamp(12px, 3.6vw, 15px);
+    font-weight: 600;
+    letter-spacing: 0.36em;
+    text-indent: 0.36em;
+    text-transform: uppercase;
+    color: var(--gold-ink);
+  }
+  .rf {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    opacity: 0;
+    will-change: opacity, transform;
+  }
+
+  .vfade {
+    position: absolute;
+    inset: 0;
+    background: var(--paper);
+    opacity: 0;
+    pointer-events: none;
+    will-change: opacity;
+  }
+
+  /* ---------- Encerramento: o resto do versículo ---------- */
+  .ending {
+    position: relative;
+    z-index: 3;
+    height: 460vh;
+    height: 460svh;
+    margin-top: -100vh;
+    margin-top: -100svh;
+    pointer-events: none;
+  }
+  .estage {
+    position: sticky;
+    top: 0;
+    height: var(--stage-h);
+    width: 100%;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    visibility: hidden;
+  }
+  .estage.is-live {
+    background: var(--paper);
+    visibility: visible;
+  }
+  .ebloom {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 140vw;
+    height: 140vw;
+    max-width: 720px;
+    max-height: 720px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(
+      circle at center,
+      rgba(255, 214, 150, 0.22) 0%,
+      rgba(255, 214, 150, 0.14) 16%,
+      rgba(255, 214, 150, 0.07) 32%,
+      rgba(255, 214, 150, 0.025) 48%,
+      rgba(255, 214, 150, 0) 68%
+    );
+    opacity: 0;
+    pointer-events: none;
+    will-change: opacity, transform;
+  }
+
+  .moment {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3.2vw;
+    padding: 0 8vw;
+    text-align: center;
+  }
+  .m-small {
+    font-size: clamp(13px, 4vw, 18px);
+    font-weight: 600;
+    letter-spacing: 0.34em;
+    text-indent: 0.34em;
+    text-transform: uppercase;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    opacity: 0;
+    will-change: opacity, transform;
+  }
+  .m-big {
+    font-size: clamp(38px, 11.5vw, 64px);
+    font-weight: 500;
+    line-height: 1.05;
+    color: var(--ink);
+    opacity: 0;
+    will-change: opacity, transform;
+  }
+  .m-luz {
+    display: inline-block;
+    will-change: color, text-shadow;
+  }
+  .m-ref {
+    margin-top: 3vw;
+    font-size: clamp(12px, 3.6vw, 15px);
+    font-weight: 600;
+    letter-spacing: 0.36em;
+    text-indent: 0.36em;
+    text-transform: uppercase;
+    color: var(--gold-ink);
+    opacity: 0;
+    will-change: opacity, transform;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .word.is-ready.is-resting { animation: none; }
+    .cue-line::after { animation: none; transform: scaleY(1); }
+    .word { transition-duration: 0.8s; }
+  }
+</style>
+</head>
+<body>
+
+<section class="scene" id="scene">
+  <div class="stage" id="stage">
+    <div class="bloom" id="bloom"></div>
+    <div class="ray ray--up" id="rayUp"></div>
+    <div class="ray ray--down" id="rayDown"></div>
+
+    <div class="word is-resting" id="word" aria-label="LUIZA">
+      <span class="letter" data-keep>L</span>
+      <span class="letter" data-keep>U</span>
+      <span class="letter letter--hidden" data-hide data-dir="-1">I</span>
+      <span class="letter" data-keep>Z</span>
+      <span class="letter letter--hidden" data-hide data-dir="1">A</span>
+    </div>
+
+    <div class="cue" id="cue">
+      <span class="cue-txt">deslize</span>
+      <i class="cue-line"></i>
+    </div>
+  </div>
+</section>
+
+<section class="verses" id="verses">
+  <div class="vstage" id="vstage">
+    <div class="dawn" id="dawn"></div>
+    <div class="grain"></div>
+    <div class="vbloom" id="vbloom"></div>
+    <div class="vray vray--up" id="vrayUp"></div>
+    <div class="vray vray--down" id="vrayDown"></div>
+
+    <div class="comp" id="comp">
+      <div class="eyebrow">
+        <span class="eb" id="eb">Vocês são a</span>
+      </div>
+      <div class="line">
+        <span class="slot" id="slot">LUZ</span>
+      </div>
+      <div class="mundo" id="mundo">do mundo.</div>
+      <div class="ref">
+        <span class="rf" id="rf">Mateus 5:14</span>
+      </div>
+    </div>
+
+    <span class="vl" aria-hidden="true">L</span>
+    <span class="vl" aria-hidden="true">U</span>
+    <span class="vl" aria-hidden="true">Z</span>
+
+    <div class="vfade" id="vfade"></div>
+  </div>
+</section>
+
+<section class="ending" id="ending">
+  <div class="estage" id="estage">
+    <div class="ebloom" id="ebloom"></div>
+
+    <div class="moment" id="mA">
+      <div class="m-small">Não se pode esconder</div>
+      <div class="m-big">uma cidade</div>
+      <div class="m-small">construída<br>sobre um monte.</div>
+    </div>
+
+    <div class="moment" id="mB">
+      <div class="m-small" id="b1">Assim brilhe</div>
+      <div class="m-big" id="b2">a <span class="m-luz" id="bluz">luz</span> de vocês</div>
+      <div class="m-small" id="b3">diante dos homens.</div>
+      <div class="m-ref" id="b4">Mateus 5:16</div>
+    </div>
+  </div>
+</section>
+
+<script>
+(function () {
+  'use strict';
+
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var scene   = document.getElementById('scene');
+  var word    = document.getElementById('word');
+  var bloom   = document.getElementById('bloom');
+  var rayUp   = document.getElementById('rayUp');
+  var rayDown = document.getElementById('rayDown');
+  var cue     = document.getElementById('cue');
+  var letters = Array.prototype.slice.call(word.querySelectorAll('.letter'));
+  var keep    = letters.filter(function (l) { return l.hasAttribute('data-keep'); });
+  var hide    = letters.filter(function (l) { return l.hasAttribute('data-hide'); });
+
+  /* ---------- utilidades ---------- */
+  function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+  function range(p, a, b) { return clamp01((p - a) / (b - a)); }
+  function easeInOut(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; }
+  function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+  function easeIn(t) { return t*t*t; }
+  function mix(a, b, t) { return a + (b - a) * t; }
+
+  /* ---------- medição / layout ---------- */
+  var layout = { fontSize: 0, dx: [], scaleEnd: 1, em: 0 };
+
+  function fitFontSize() {
+    var vw = window.innerWidth;
+    var maxW = vw * 0.88;               // margens laterais confortáveis
+    var fs = Math.min(vw * 0.26, 220);  // ponto de partida
+    word.style.fontSize = fs + 'px';
+    // zera transformações para medir
+    letters.forEach(function (l) { l.style.transform = ''; });
+    var w = word.getBoundingClientRect().width;
+    if (w > maxW) fs = fs * (maxW / w);
+    word.style.fontSize = fs + 'px';
+    layout.fontSize = fs;
+  }
+
+  function measure() {
+    fitFontSize();
+    letters.forEach(function (l) { l.style.transform = ''; });
+
+    var vw = window.innerWidth;
+    var fs = layout.fontSize;
+    var rects = keep.map(function (l) { return l.getBoundingClientRect(); });
+    var widths = rects.map(function (r) { return r.width; });
+    var centers = rects.map(function (r) { return r.left + r.width / 2; });
+
+    // LUZ final: mais tracking, ligeiramente maior, sempre dentro de 82vw
+    var gapEm = 0.22;
+    var sumW = widths.reduce(function (a, b) { return a + b; }, 0);
+    var totalAt1 = sumW + gapEm * fs * (keep.length - 1);
+    var s = Math.min(1.34, (vw * 0.82) / totalAt1);
+    var total = totalAt1 * s;
+    var x = vw / 2 - total / 2;
+
+    layout.dx = keep.map(function (l, i) {
+      var cx = x + (widths[i] * s) / 2;
+      var dx = cx - centers[i];
+      x += widths[i] * s + gapEm * fs * s;
+      return dx;
+    });
+    layout.scaleEnd = s;
+    layout.em = fs;
+
+    // fachos nascem acima e abaixo da palavra, nunca sobre as letras
+    var half = (fs * 0.72 * s) / 2 + 28;
+    rayUp.style.marginBottom = half + 'px';
+    rayDown.style.marginTop = half + 'px';
+  }
+
+  /* ---------- progresso de scroll ---------- */
+  var target = 0, current = 0, raf = null, lastApplied = -1;
+
+  function readProgress() {
+    var r = scene.getBoundingClientRect();
+    var vh = window.innerHeight;
+    var travel = r.height - vh;
+    target = travel > 0 ? clamp01(-r.top / travel) : 0;
+  }
+
+  function loop() {
+    var k = reduced ? 1 : 0.085;                // suavização
+    current += (target - current) * k;
+    if (Math.abs(target - current) < 0.0005) current = target;
+    if (current !== lastApplied) { apply(current); lastApplied = current; }
+    if (current !== target) raf = requestAnimationFrame(loop);
+    else raf = null;
+  }
+
+  function schedule() {
+    readProgress();
+    if (raf === null) raf = requestAnimationFrame(loop);
+  }
+
+  /* ---------- coreografia ---------- */
+  function apply(p) {
+    var em = layout.em;
+
+    // repouso / pista
+    word.classList.toggle('is-resting', p < 0.02);
+    cue.style.opacity = (1 - range(p, 0, 0.06)) * 0.9;
+
+    // I e A recuam para a escuridão
+    hide.forEach(function (l, i) {
+      var dir = parseFloat(l.getAttribute('data-dir'));
+      var a = i === 0 ? 0.10 : 0.16;
+      var t = easeInOut(range(p, a, a + 0.36));
+      var op = 1 - easeInOut(range(p, a + 0.02, a + 0.30));
+      if (reduced) {
+        l.style.transform = '';
+        l.style.filter = '';
+        l.style.opacity = op;
+        return;
+      }
+      var y = dir * em * 0.22 * t;
+      var z = -520 * t;
+      var sc = mix(1, 0.86, t);
+      var blur = 16 * easeIn(t);
+      l.style.transform = 'translate3d(0,' + y.toFixed(2) + 'px,' + z.toFixed(1) + 'px) scale(' + sc.toFixed(4) + ')';
+      l.style.filter = blur > 0.15 ? 'blur(' + blur.toFixed(2) + 'px)' : '';
+      l.style.opacity = op.toFixed(3);
+    });
+
+    // L U Z se aproximam e crescem
+    var g = easeInOut(range(p, 0.30, 0.78));
+    var s = mix(1, layout.scaleEnd, g);
+    keep.forEach(function (l, i) {
+      if (reduced) {
+        // sem deslocamento: só um leve ganho de escala
+        l.style.transform = 'scale(' + s.toFixed(4) + ')';
+        return;
+      }
+      var dx = layout.dx[i] * g;
+      var dz = 40 * g;
+      l.style.transform = 'translate3d(' + dx.toFixed(2) + 'px,0,' + dz.toFixed(1) + 'px) scale(' + s.toFixed(4) + ')';
+    });
+
+    // LUZ passa a iluminar
+    var lt = easeOut(range(p, 0.60, 0.92));
+    var warm = lt;
+    var col = 'rgb(' +
+      Math.round(mix(239, 250, warm)) + ',' +
+      Math.round(mix(232, 244, warm)) + ',' +
+      Math.round(mix(218, 228, warm)) + ')';
+    var shadow = lt < 0.01 ? 'none' :
+      '0 0 ' + (6 * lt).toFixed(1) + 'px rgba(255,246,226,' + (0.42 * lt).toFixed(3) + '),' +
+      '0 0 ' + (28 * lt).toFixed(1) + 'px rgba(255,232,190,' + (0.22 * lt).toFixed(3) + '),' +
+      '0 0 ' + (90 * lt).toFixed(1) + 'px rgba(255,220,160,' + (0.14 * lt).toFixed(3) + ')';
+    keep.forEach(function (l) {
+      l.style.color = col;
+      l.style.textShadow = shadow;
+    });
+
+    bloom.style.opacity = (0.95 * lt).toFixed(3);
+
+    var rt = easeOut(range(p, 0.72, 1));
+    var rayT = reduced ? 'translateX(-50%) scaleY(1)' : 'translateX(-50%) scaleY(' + rt.toFixed(3) + ')';
+    rayUp.style.opacity   = (0.42 * rt).toFixed(3);
+    rayDown.style.opacity = (0.30 * rt).toFixed(3);
+    rayUp.style.transform = rayT;
+    rayDown.style.transform = rayT;
+  }
+
+  /* ---------- inicialização ---------- */
+  function init() {
+    measure();
+    lastApplied = -1;
+    readProgress();
+    current = target;
+    apply(current);
+    word.classList.add('is-ready');
+    // depois da entrada, a pista responde ao scroll sem atraso
+    setTimeout(function () { cue.style.transition = 'opacity 0.5s ease'; }, 5000);
+  }
+
+  var ready = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+  ready.then(init);
+  // segurança: se a fonte demorar, mostra assim mesmo
+  setTimeout(function () { if (!word.classList.contains('is-ready')) init(); }, 2200);
+
+  window.addEventListener('scroll', schedule, { passive: true });
+
+  var resizeTimer = null;
+  function onResize() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () { measure(); lastApplied = -1; schedule(); }, 120);
+  }
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', onResize);
+  if (document.fonts) document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', onResize);
+
+  /* geometria final de LUZ (p = 1), para a continuação assumir a palavra sem corte */
+  window.__luzFinal = function () {
+    if (!layout.em) return null;
+    var stageEl = document.getElementById('stage');
+    apply(1);
+    var sr = stageEl.getBoundingClientRect();
+    var rects = keep.map(function (l) {
+      var r = l.getBoundingClientRect();
+      return { left: r.left - sr.left, top: r.top - sr.top, width: r.width, height: r.height };
+    });
+    var cs = getComputedStyle(keep[0]);
+    var out = {
+      rects: rects,
+      color: cs.color,
+      shadow: cs.textShadow,
+      half: parseFloat(rayUp.style.marginBottom) || 0,
+      fontSize: layout.fontSize
+    };
+    apply(current);
+    lastApplied = current;
+    return out;
+  };
+})();
+</script>
+
+<script>
+/* ---------- Continuação: João 8:12 → Mateus 5:14 ---------- */
+(function () {
+  'use strict';
+
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var $ = function (id) { return document.getElementById(id); };
+
+  var verses = $('verses'), stage = $('vstage'), bloom = $('vbloom'), vfade = $('vfade'), dawn = $('dawn');
+  var rayUp = $('vrayUp'), rayDown = $('vrayDown');
+  var eb = $('eb'), slot = $('slot');
+  var mundo = $('mundo'), rf = $('rf');
+  var letters = Array.prototype.slice.call(stage.querySelectorAll('.vl'));
+
+  var IVORY = [250, 244, 228], WHITE = [255, 255, 255], PAPER = [246, 242, 234],
+      INK = [28, 24, 20], GOLD = [184, 146, 82];
+  function rgb(a, b, t) {
+    return 'rgb(' + Math.round(a[0] + (b[0] - a[0]) * t) + ',' + Math.round(a[1] + (b[1] - a[1]) * t) + ',' + Math.round(a[2] + (b[2] - a[2]) * t) + ')';
+  }
+
+  function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+  function range(p, a, b) { return clamp01((p - a) / (b - a)); }
+  function easeInOut(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; }
+  function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+  function mix(a, b, t) { return a + (b - a) * t; }
+
+  var L = null;
+
+  function measure() {
+    var f = window.__luzFinal && window.__luzFinal();
+    if (!f) return false;
+
+    var rects = f.rects;
+    var block = {
+      left: Math.min.apply(null, rects.map(function (r) { return r.left; })),
+      top:  Math.min.apply(null, rects.map(function (r) { return r.top; })),
+      right: Math.max.apply(null, rects.map(function (r) { return r.left + r.width; })),
+      bottom: Math.max.apply(null, rects.map(function (r) { return r.top + r.height; }))
+    };
+    block.width = block.right - block.left;
+    block.height = block.bottom - block.top;
+
+    var vw = window.innerWidth;
+    var sr = stage.getBoundingClientRect();
+    var F = rects[0].height;                          // corpo final de LUZ na abertura
+    var k = Math.min(1, (vw * 0.82) / block.width);   // LUZ mantém o tamanho da abertura
+    var Fk = F * k;
+
+    slot.style.fontSize = Fk + 'px';
+
+    letters.forEach(function (l, i) {
+      l.style.fontSize = F + 'px';
+      l.style.left = rects[i].left + 'px';
+      l.style.top = rects[i].top + 'px';
+      l.style.color = f.color;
+      l.style.textShadow = f.shadow;
+      l.style.transform = '';
+    });
+    rayUp.style.marginBottom = f.half + 'px';
+    rayDown.style.marginTop = f.half + 'px';
+
+    // alvo: o slot invisível no meio do sanduíche
+    var tr = slot.getBoundingClientRect();
+    var target = { left: tr.left - sr.left, top: tr.top - sr.top, width: tr.width, height: tr.height };
+    k = target.height / block.height;
+
+    var cx = target.left + target.width / 2;
+    var cy = target.top + target.height / 2;
+
+    L = { rects: rects, block: block, k: k, target: target, F: F, Fk: Fk, cx: cx, cy: cy, stageH: sr.height };
+    return true;
+  }
+
+  /* ---------- progresso ---------- */
+  var target = 0, current = 0, raf = null, lastApplied = -1, live = false;
+
+  function readProgress() {
+    var r = verses.getBoundingClientRect();
+    var vh = window.innerHeight;
+    var travel = r.height - vh;
+    target = travel > 0 ? clamp01(-r.top / travel) : 0;
+    live = r.top <= 0;
+    stage.classList.toggle('is-live', live);
+  }
+
+  function loop() {
+    var kk = reduced ? 1 : 0.085;
+    current += (target - current) * kk;
+    if (Math.abs(target - current) < 0.0005) current = target;
+    if (L && current !== lastApplied) { apply(current); lastApplied = current; }
+    if (current !== target) raf = requestAnimationFrame(loop);
+    else raf = null;
+  }
+
+  function schedule() {
+    readProgress();
+    if (raf === null) raf = requestAnimationFrame(loop);
+  }
+
+  /* ---------- coreografia ---------- */
+  function glow(r, a) {
+    // brilho da abertura, com multiplicadores de raio e de intensidade
+    return '0 0 ' + (6 * r).toFixed(1) + 'px rgba(255,246,226,' + Math.min(1, 0.42 * a).toFixed(3) + '),' +
+           '0 0 ' + (28 * r).toFixed(1) + 'px rgba(255,232,190,' + Math.min(1, 0.22 * a).toFixed(3) + '),' +
+           '0 0 ' + (90 * r).toFixed(1) + 'px rgba(255,220,160,' + Math.min(1, 0.14 * a).toFixed(3) + ')';
+  }
+
+  function apply(q) {
+    // 1. LUZ desliza da posição herdada para o meio do sanduíche
+    var m = reduced ? 1 : easeInOut(range(q, 0.05, 0.30));
+    var sc = mix(1, L.k, m);
+    letters.forEach(function (l, i) {
+      var r = L.rects[i];
+      var tx = L.target.left + (r.left - L.block.left) * L.k;
+      var ty = L.target.top  + (r.top  - L.block.top)  * L.k;
+      var dx = (tx - r.left) * m, dy = (ty - r.top) * m;
+      l.style.transform = 'translate3d(' + dx.toFixed(2) + 'px,' + dy.toFixed(2) + 'px,0) scale(' + sc.toFixed(4) + ')';
+    });
+
+    // fachos centrais da abertura se recolhem
+    var rc = 1 - easeOut(range(q, 0.05, 0.22));
+    rayUp.style.opacity = (0.42 * rc).toFixed(3);
+    rayDown.style.opacity = (0.30 * rc).toFixed(3);
+
+    // 2. amanhecer: a luz toma a tela
+    var dt = easeInOut(range(q, 0.06, 0.32));
+    if (reduced) {
+      dawn.style.transform = 'scale(2.3)';
+      dawn.style.opacity = dt.toFixed(3);
+    } else {
+      dawn.style.transform = 'scale(' + (2.3 * dt).toFixed(4) + ')';
+    }
+    stage.classList.toggle('is-light', q >= 0.32);
+
+    // calor atrás de LUZ (sobre o preto é o brilho; sobre o branco, uma mancha quente)
+    var e = easeInOut(range(q, 0.66, 0.88));
+    var by = (L.cy - L.stageH / 2) * m;
+    var bs = mix(1, 0.94, m) + 0.5 * e;
+    bloom.style.transform = 'translate(-50%,-50%) translate3d(0,' + by.toFixed(1) + 'px,0) scale(' + bs.toFixed(3) + ')';
+    bloom.style.opacity = (0.95 - 0.65 * dt + 0.25 * e).toFixed(3);
+
+    // as letras: viram luz, somem na luz, voltam em tinta e depois esquentam
+    var col, sh;
+    if (q < 0.22) {
+      var t = easeOut(range(q, 0.05, 0.22));
+      col = rgb(IVORY, WHITE, t);
+      sh = glow(1 + 1.2 * t, 1 + 0.9 * t);
+    } else if (q < 0.30) {
+      var t2 = easeInOut(range(q, 0.22, 0.30));
+      col = rgb(WHITE, PAPER, t2);
+      sh = glow(2.2, 1.9 * (1 - t2));
+    } else if (q < 0.36) {
+      col = rgb(PAPER, PAPER, 0);
+      sh = 'none';
+    } else {
+      var t3 = easeOut(range(q, 0.36, 0.52));
+      col = rgb(PAPER, INK, t3);
+      if (e > 0) col = rgb(INK, GOLD, e);
+      sh = 'none';
+    }
+    letters.forEach(function (l) { l.style.textShadow = sh; l.style.color = col; });
+
+    // 3. o sanduíche em tinta: VOCÊS SÃO A / LUZ / DO MUNDO.
+    var t1 = easeOut(range(q, 0.42, 0.56));
+    eb.style.opacity = t1.toFixed(3);
+    eb.style.transform = reduced ? '' : 'translate3d(0,' + ((1 - t1) * 10).toFixed(1) + 'px,0)';
+
+    var tm = easeOut(range(q, 0.48, 0.62));
+    mundo.style.opacity = tm.toFixed(3);
+    mundo.style.transform = reduced ? '' : 'translate3d(0,' + ((1 - tm) * 10).toFixed(1) + 'px,0)';
+
+    var tr = easeOut(range(q, 0.56, 0.68));
+    rf.style.opacity = tr.toFixed(3);
+    rf.style.transform = reduced ? '' : 'translate3d(0,' + ((1 - tr) * 8).toFixed(1) + 'px,0)';
+
+    // 4. tudo se dissolve no branco
+    vfade.style.opacity = easeInOut(range(q, 0.91, 1)).toFixed(3);
+  }
+
+  /* ---------- inicialização ---------- */
+  function init() {
+    if (!measure()) return false;
+    lastApplied = -1;
+    readProgress();
+    current = target;
+    apply(current);
+    lastApplied = current;
+    return true;
+  }
+
+  var ready = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+  ready.then(function () { setTimeout(init, 0); });
+  setTimeout(function () { if (!L) init(); }, 2400);
+
+  window.addEventListener('scroll', schedule, { passive: true });
+
+  var resizeTimer = null;
+  function onResize() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () { init(); schedule(); }, 260);
+  }
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', onResize);
+  if (document.fonts) document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', onResize);
+})();
+</script>
+
+<script>
+/* ---------- Encerramento: o resto do versículo (Mateus 5:14b–16) ---------- */
+(function () {
+  'use strict';
+
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var $ = function (id) { return document.getElementById(id); };
+  var ending = $('ending'), stage = $('estage'), bloom = $('ebloom');
+  var mA = $('mA'), linesA = Array.prototype.slice.call(mA.children);
+  var b1 = $('b1'), b2 = $('b2'), b3 = $('b3'), b4 = $('b4'), bluz = $('bluz');
+
+  function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+  function range(p, a, b) { return clamp01((p - a) / (b - a)); }
+  function easeInOut(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; }
+  function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+  function mix(a, b, t) { return a + (b - a) * t; }
+
+  function show(el, tin, tout) {
+    var o = tin * (1 - (tout || 0));
+    el.style.opacity = o.toFixed(3);
+    el.style.transform = reduced ? '' : 'translate3d(0,' + ((1 - tin) * 12 - (tout || 0) * 10).toFixed(1) + 'px,0)';
+  }
+
+  var target = 0, current = 0, raf = null, lastApplied = -1;
+
+  function readProgress() {
+    var r = ending.getBoundingClientRect();
+    var vh = window.innerHeight;
+    var travel = r.height - vh;
+    target = travel > 0 ? clamp01(-r.top / travel) : 0;
+    stage.classList.toggle('is-live', r.top <= 0);
+  }
+
+  function loop() {
+    var k = reduced ? 1 : 0.085;
+    current += (target - current) * k;
+    if (Math.abs(target - current) < 0.0005) current = target;
+    if (current !== lastApplied) { apply(current); lastApplied = current; }
+    if (current !== target) raf = requestAnimationFrame(loop);
+    else raf = null;
+  }
+
+  function schedule() {
+    readProgress();
+    if (raf === null) raf = requestAnimationFrame(loop);
+  }
+
+  function apply(e) {
+    // A: "Não se pode esconder / uma cidade / construída sobre um monte."
+    var outA = easeInOut(range(e, 0.40, 0.50));
+    linesA.forEach(function (el, i) {
+      var a = 0.06 + i * 0.05;
+      show(el, easeOut(range(e, a, a + 0.18)), outA);
+    });
+
+    // B: "Assim brilhe / a luz de vocês / diante dos homens."
+    show(b1, easeOut(range(e, 0.56, 0.70)));
+    show(b2, easeOut(range(e, 0.60, 0.76)));
+    show(b3, easeOut(range(e, 0.66, 0.80)));
+    show(b4, easeOut(range(e, 0.74, 0.86)));
+
+    // a palavra "luz" esquenta, como LUZ: no branco, luz é menos tinta
+    var g = easeOut(range(e, 0.78, 0.96));
+    bluz.style.color = 'rgb(' + Math.round(mix(28, 184, g)) + ',' + Math.round(mix(24, 146, g)) + ',' + Math.round(mix(20, 82, g)) + ')';
+
+    bloom.style.opacity = (0.9 * g).toFixed(3);
+    bloom.style.transform = 'translate(-50%,-50%) scale(' + mix(0.8, 1.15, g).toFixed(3) + ')';
+  }
+
+  function init() {
+    lastApplied = -1;
+    readProgress();
+    current = target;
+    apply(current);
+    lastApplied = current;
+  }
+
+  init();
+  window.addEventListener('scroll', schedule, { passive: true });
+  window.addEventListener('resize', schedule);
+  window.addEventListener('orientationchange', schedule);
+})();
+</script>
+</body>
+</html>
