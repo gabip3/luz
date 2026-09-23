@@ -948,10 +948,10 @@
     setTimeout(function () { cue.style.transition = 'opacity 0.5s ease'; }, 2600);
   }
 
-  var ready = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
-  ready.then(init);
-  // segurança: se a fonte demorar, mostra assim mesmo
-  setTimeout(function () { if (!word.classList.contains('is-ready')) init(); }, 1200);
+  // aparece de imediato, sem esperar fonte nem temporizador
+  init();
+  // quando a fonte chegar, remede e reaplica
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { measure(); lastApplied = -1; schedule(); });
 
   window.addEventListener("scroll", schedule, { passive: true });
   (window.__ticks = window.__ticks || []).push(schedule);
@@ -1181,9 +1181,8 @@
     return true;
   }
 
-  var ready = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
-  ready.then(function () { setTimeout(init, 0); });
-  setTimeout(function () { if (!L) init(); }, 2400);
+  init();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { init(); schedule(); });
 
   window.addEventListener("scroll", schedule, { passive: true });
   (window.__ticks = window.__ticks || []).push(schedule);
@@ -1400,9 +1399,8 @@
     lastApplied = current;
   }
 
-  var ready = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
-  ready.then(init);
-  setTimeout(function () { if (!lines[0].style.fontSize) init(); }, 2400);
+  init();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { init(); schedule(); });
 
   window.addEventListener("scroll", schedule, { passive: true });
   (window.__ticks = window.__ticks || []).push(schedule);
