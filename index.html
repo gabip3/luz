@@ -951,7 +951,7 @@
   var ready = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
   ready.then(init);
   // segurança: se a fonte demorar, mostra assim mesmo
-  setTimeout(function () { if (!word.classList.contains('is-ready')) init(); }, 2200);
+  setTimeout(function () { if (!word.classList.contains('is-ready')) init(); }, 1200);
 
   window.addEventListener("scroll", schedule, { passive: true });
   (window.__ticks = window.__ticks || []).push(schedule);
