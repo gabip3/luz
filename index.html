@@ -195,7 +195,7 @@
     opacity: 0;
     pointer-events: none;
     will-change: opacity;
-    transition: opacity 1.6s ease 1.5s;
+    transition: opacity 2.4s cubic-bezier(.2,.6,.2,1);
   }
   .cue-txt {
     font-size: clamp(12px, 3.4vw, 14px);
@@ -945,7 +945,7 @@
     apply(current);
     word.classList.add('is-ready');
     // depois da entrada, a pista responde ao scroll sem atraso
-    setTimeout(function () { cue.style.transition = 'opacity 0.5s ease'; }, 5000);
+    setTimeout(function () { cue.style.transition = 'opacity 0.5s ease'; }, 2600);
   }
 
   var ready = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
